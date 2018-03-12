@@ -51,7 +51,6 @@ public class TweetResource {
 			// Save Tweet in DB
 			tweetsDao.createTweet(tweet);
 			int tweetId = tweetsDao.getLastTweetId();
-			System.out.println("Tweet created");
 			tweet.setTweetId(tweetId);
 			// Give it to the Tweet Distribution engine to do the distribution to the followers
 			TweetDistributionEngine.getInstance().distribute(tweet);

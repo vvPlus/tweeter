@@ -1,11 +1,10 @@
 package com.vv.engine;
 
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -16,11 +15,14 @@ import org.slf4j.LoggerFactory;
 import com.vv.dao.FollowerEdgesDAO;
 import com.vv.dao.FollowerEdgesDAOImpl;
 import com.vv.model.Tweet;
-import com.vv.resource.FollowEdgeResource;
 
 public class TweetDistributionEngine {
 
 	private static final Logger LOG = LoggerFactory.getLogger(TweetDistributionEngine.class);
+
+	private static final int FEED_SIZE = 100;
+
+	private static final int NUM_OF_THREADS = 4;
 
 	private static TweetDistributionEngine engine = null;
 	private ExecutorService executorService; 
@@ -38,8 +40,7 @@ public class TweetDistributionEngine {
 	}
 
 	public void startEngine() {
-	   // Setup thread pool and start polling the queue
-		executorService = Executors.newFixedThreadPool(4);
+		executorService = Executors.newFixedThreadPool(NUM_OF_THREADS);
 	}
 	
 	public void stopEngine() {
@@ -58,16 +59,24 @@ public class TweetDistributionEngine {
 					followers = getFollowers(creatorId);
 					// Store in FeedCache. 
 					for (Integer followerId : followers) {
+						LOG.debug("Distributing tweet {} to user {}", tweetToDistribute.getTweetId(), followerId);
+
 						List<Integer> tweetsForFollower = feedCache.get(followerId);
 						if (tweetsForFollower == null) {
-							tweetsForFollower = new ArrayList<>();
+							tweetsForFollower = Collections.synchronizedList(new LinkedList<Integer>());
+							feedCache.put(followerId, tweetsForFollower);
 						}
-						LOG.debug("Tweet to distribute: ", tweetToDistribute.getTweetId());
-						tweetsForFollower.add(tweetToDistribute.getTweetId());
-						feedCache.put(followerId, tweetsForFollower);
+
+						synchronized (TweetDistributionEngine.this) {
+							tweetsForFollower.add(tweetToDistribute.getTweetId());
+							// Remove the first tweet if the feed size is greater than FEED_SIZE
+							if (tweetsForFollower.size() > FEED_SIZE) {
+								tweetsForFollower.remove(0);
+							}
+						}
 					}
 				} catch (SQLException e) {
-					LOG.error(this.getClass().getName(), e.getMessage());
+					LOG.error("Failed to distribute the tweet with id {}", tweetToDistribute.getTweetId(), e);
 				}
 			}			
 		});
@@ -79,6 +88,6 @@ public class TweetDistributionEngine {
 	}
 
 	public List<Integer> getTweetIdsForUser(int userId) {
-		return feedCache.get(userId);
+		return Collections.unmodifiableList(feedCache.get(userId));
 	}
 }
