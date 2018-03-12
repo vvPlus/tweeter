@@ -4,7 +4,14 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.vv.resource.FollowEdgeResource;
+
 public class DatabaseHelper {
+
+	private static final Logger LOG = LoggerFactory.getLogger(DatabaseHelper.class);
 
 	private static final String DB_LOCATION = "/Users/vidhya/Workspaces/Sandbox/Databases/TweeterDatabase.db";
 	private static Connection dbConn = null;
@@ -16,9 +23,9 @@ public class DatabaseHelper {
 				Class.forName("org.sqlite.JDBC");
 				dbConn = DriverManager.getConnection("jdbc:sqlite:" + DB_LOCATION);
 			} catch (SQLException e) {
-				e.printStackTrace();
+				LOG.error(this.getClass().getName(), e.getMessage());
 			} catch (ClassNotFoundException e) {
-				e.printStackTrace();
+				LOG.error(this.getClass().getName(), e.getMessage());
 			}
 		}
 	}

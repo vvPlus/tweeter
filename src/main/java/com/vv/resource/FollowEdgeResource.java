@@ -9,6 +9,9 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.core.MediaType;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.vv.dao.FollowerEdgesDAO;
 import com.vv.dao.FollowerEdgesDAOImpl;
 import com.vv.model.FollowEdge;
@@ -16,14 +19,13 @@ import com.vv.model.FollowEdge;
 @Path("followEdges")
 public class FollowEdgeResource {
 
+	private static final Logger LOG = LoggerFactory.getLogger(FollowEdgeResource.class);
+
 	private FollowerEdgesDAO followersDAO;
 
 	public FollowEdgeResource() {
 		this.followersDAO = new FollowerEdgesDAOImpl();
 	}
-
-	// get all followers for a user
-	// get all users that a user follows
 
 	// let this user follow a user
 	@POST
@@ -32,18 +34,21 @@ public class FollowEdgeResource {
 		try {
 			followersDAO.follow(followEdge.getUserId(), followEdge.getTargetUserId());
 		} catch (SQLException e) {
-			//e.printStackTrace();
+			LOG.error("Exception while adding follower from {} to {}",
+					followEdge.getUserId(), followEdge.getTargetUserId(), e);
+			throw new RuntimeException(e);
 		}
 	}
 
 	// unfollow
 	@DELETE
-	public void unfollowUser(@PathParam("userId") int callerId, @PathParam("targetUserId") int targetUserId) {
+	public void unfollowUser(@PathParam("userId") int userId,
+			@PathParam("targetUserId") int targetUserId) {
 		try {
-			followersDAO.unfollow(callerId, targetUserId);
+			followersDAO.unfollow(userId, targetUserId);
 		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			LOG.error("Exception while removing follower from {} to {}", userId, targetUserId, e);
+			throw new RuntimeException(e);
 		}
 	}
 	
